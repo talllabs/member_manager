@@ -1,92 +1,63 @@
-/* ========= paywall.js ========= */
-/* Handles UI overlay + locked content gating */
+/* ========= paywall.js (Squarespace-safe) ========= */
 
 (function () {
-  if (!window.APP_CONFIG) return;
+  const GATED_PATH = "/travel-tourism-rfp-hub-beta";
+  const AUTH_KEY = "sigmund_rfp_auth";
+  const EXP_KEY = "sigmund_rfp_expiry";
 
-  const PATH = window.APP_CONFIG.site.gatedPath;
-  const STORAGE_KEY = "sigmund_rfp_auth";
-  const EXPIRY_KEY = "sigmund_rfp_expiry";
+  if (!window.location.pathname.startsWith(GATED_PATH)) return;
 
-  // Only run on gated page
-  if (!window.location.pathname.startsWith(PATH)) return;
-
-  function hasValidAccess() {
-    const token = localStorage.getItem(STORAGE_KEY);
-    const expiry = parseInt(localStorage.getItem(EXPIRY_KEY), 10);
-    if (!token || !expiry) return false;
-    return Date.now() < expiry;
+  function hasAccess() {
+    const token = localStorage.getItem(AUTH_KEY);
+    const expiry = Number(localStorage.getItem(EXP_KEY));
+    return token && expiry && Date.now() < expiry;
   }
 
-  function hideLockedContent() {
+  function lockContent() {
     document.querySelectorAll('[data-paywall="locked"]').forEach(el => {
       el.style.display = "none";
     });
   }
 
-  function showLockedContent() {
+  function unlockContent() {
     document.querySelectorAll('[data-paywall="locked"]').forEach(el => {
       el.style.display = "";
     });
   }
 
-  function createOverlay() {
+  function showOverlay() {
+    if (document.getElementById("sigmund-paywall-overlay")) return;
+
     const overlay = document.createElement("div");
     overlay.id = "sigmund-paywall-overlay";
-
     overlay.innerHTML = `
-      <div class="sigmund-paywall-card">
+      <div class="sigmund-card">
         <h2>Members Only</h2>
         <p>Access the full Travel & Tourism RFP Hub.</p>
 
-        <input
-          type="email"
-          id="sigmund-login-email"
-          placeholder="Enter your email"
-          autocomplete="email"
-        />
+        <input type="email" id="sigmund-email" placeholder="Enter your email" />
+        <button id="sigmund-login">Send login link</button>
 
-        <button id="sigmund-login-btn">Send login link</button>
+        <div class="divider">or</div>
 
-        <div class="sigmund-divider">or</div>
-
-        <button id="sigmund-join-individual">Join Individual</button>
-        <button id="sigmund-join-agency">Join Agency</button>
+        <button id="join-individual">Join Individual</button>
+        <button id="join-agency">Join Agency</button>
       </div>
     `;
 
     document.body.appendChild(overlay);
 
-    // Login button
-    document
-      .getElementById("sigmund-login-btn")
-      .addEventListener("click", () => {
-        const email = document.getElementById("sigmund-login-email").value.trim();
-        if (!email) {
-          alert("Please enter a valid email.");
-          return;
-        }
-        if (window.sendMagicLink) {
-          window.sendMagicLink(email);
-        } else {
-          alert("Login system not ready yet.");
-        }
-      });
+    document.getElementById("sigmund-login").onclick = () => {
+      const email = document.getElementById("sigmund-email").value.trim();
+      if (!email) return alert("Enter a valid email");
+      window.sendMagicLink?.(email);
+    };
 
-    // Stripe buttons
-    document
-      .getElementById("sigmund-join-individual")
-      .addEventListener("click", () => {
-        window.location.href =
-          window.APP_CONFIG.stripe.individualCheckout;
-      });
+    document.getElementById("join-individual").onclick = () =>
+      window.location.href = window.APP_CONFIG.stripe.individualCheckout;
 
-    document
-      .getElementById("sigmund-join-agency")
-      .addEventListener("click", () => {
-        window.location.href =
-          window.APP_CONFIG.stripe.agencyCheckout;
-      });
+    document.getElementById("join-agency").onclick = () =>
+      window.location.href = window.APP_CONFIG.stripe.agencyCheckout;
   }
 
   function injectStyles() {
@@ -101,65 +72,50 @@
         justify-content: center;
         z-index: 99999;
       }
-
-      .sigmund-paywall-card {
-        background: #ffffff;
+      .sigmund-card {
+        background: #fff;
         padding: 32px;
         width: 360px;
-        max-width: 90%;
-        border-radius: 18px;
+        border-radius: 20px;
         text-align: center;
-        box-shadow: 0 30px 60px rgba(0,0,0,0.25);
         font-family: Montserrat, sans-serif;
       }
-
-      .sigmund-paywall-card h2 {
-        margin: 0 0 8px;
-        font-size: 26px;
-      }
-
-      .sigmund-paywall-card p {
-        font-size: 14px;
-        margin-bottom: 18px;
-        color: #555;
-      }
-
-      .sigmund-paywall-card input {
+      .sigmund-card h2 { font-size: 26px; margin-bottom: 6px; }
+      .sigmund-card p { font-size: 14px; margin-bottom: 16px; }
+      .sigmund-card input {
         width: 100%;
         padding: 12px;
+        border-radius: 999px;
+        border: 1px solid #ccc;
         margin-bottom: 12px;
-        border-radius: 999px;
-        border: 1px solid #ddd;
-        font-size: 14px;
       }
-
-      .sigmund-paywall-card button {
+      .sigmund-card button {
         width: 100%;
         padding: 12px;
         border-radius: 999px;
-        border: none;
-        margin-bottom: 10px;
-        font-size: 14px;
-        cursor: pointer;
         background: #000;
         color: #fff;
+        border: none;
+        margin-bottom: 10px;
+        cursor: pointer;
       }
-
-      .sigmund-divider {
-        margin: 12px 0;
-        font-size: 12px;
-        color: #888;
-      }
+      .divider { font-size: 12px; color: #777; margin: 12px 0; }
     `;
     document.head.appendChild(style);
   }
 
-  // INIT
-  if (hasValidAccess()) {
-    showLockedContent();
-  } else {
-    hideLockedContent();
+  function initPaywall() {
+    if (hasAccess()) {
+      unlockContent();
+      return;
+    }
+    lockContent();
     injectStyles();
-    createOverlay();
+    showOverlay();
   }
+
+  /* 🔥 CRITICAL: WAIT FOR SQUARESPACE */
+  window.addEventListener("load", () => {
+    setTimeout(initPaywall, 300);
+  });
 })();
