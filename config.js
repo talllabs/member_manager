@@ -1,21 +1,22 @@
-window.PaywallConfig = {
-  pagePath: "/travel-tourism-rfp-hub-beta",
+/* ========= config.js ========= */
+/* Global config for Sigmund RFP Hub auth + paywall */
 
-  siteName: "The Sigmund Project",
-
-  access: {
-    storageKey: "sigmund_rfp_access",
-    ttlDays: 30
-  },
-
-  stripe: {
-    individualPlanUrl: "https://buy.stripe.com/14AbJ22hI9r6dom5OX4AU01",
-    agencyPlanUrl: "https://buy.stripe.com/7sY8wQ3lM9r63NM1yH4AU00"
+window.APP_CONFIG = {
+  site: {
+    gatedPath: "/travel-tourism-rfp-hub-beta",
+    authDurationDays: 30
   },
 
   email: {
     serviceId: "service_hkrpkig",
     templateId: "template_hyzipwp",
     publicKey: "cznDvyzV31jcctQEA"
+  },
+
+  stripe: {
+    individualCheckout:
+      "https://buy.stripe.com/14AbJ22hI9r6dom5OX4AU01",
+    agencyCheckout:
+      "https://buy.stripe.com/7sY8wQ3lM9r63NM1yH4AU00"
   }
 };
