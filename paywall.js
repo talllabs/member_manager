@@ -1,24 +1,15 @@
 (function () {
-  // Detect base path from this script's URL
-  const currentScript = document.currentScript;
-  const basePath = currentScript.src.replace("paywall.js", "");
+  const base = document.currentScript.src.replace("paywall.js", "");
 
-  // Load required JS files
-  const scripts = [
-    basePath + "stripe.js",
-    basePath + "auth.js"
-  ];
-
-  scripts.forEach(src => {
+  ["stripe.js", "auth.js"].forEach(file => {
     const s = document.createElement("script");
-    s.src = src;
+    s.src = base + file;
     s.defer = true;
     document.head.appendChild(s);
   });
 
-  // Load stylesheet
-  const style = document.createElement("link");
-  style.rel = "stylesheet";
-  style.href = basePath + "styles.css";
-  document.head.appendChild(style);
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = base + "styles.css";
+  document.head.appendChild(css);
 })();
