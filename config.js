@@ -1,6 +1,5 @@
 window.PaywallConfig = {
   siteName: "The Sigmund Project",
-  cookieDomain: "thesigmundproject.org",
 
   stripe: {
     individualPlanUrl: "https://buy.stripe.com/14AbJ22hI9r6dom5OX4AU01",
@@ -9,7 +8,6 @@ window.PaywallConfig = {
   },
 
   access: {
-    storageKey: "sigmund_paywall_access",
-    allowlistEmails: []
+    storageKey: "sigmund_rfp_access"
   }
 };
