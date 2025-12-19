@@ -1,78 +1,109 @@
+/* ========= auth.js ========= */
+/* Magic-link auth for Sigmund RFP Hub */
+/* 30-day access using EmailJS */
+
 (function () {
-  const cfg = window.PaywallConfig;
-  const key = cfg.access.storageKey;
-  const ttl = cfg.access.ttlDays * 24 * 60 * 60 * 1000;
+  const STORAGE_KEY = "rfp_magic_auth";
+  const EXPIRY_DAYS = 30;
 
-  const record = JSON.parse(localStorage.getItem(key) || "{}");
-  const valid = record.expires && record.expires > Date.now();
+  /* ---------- helpers ---------- */
 
-  const locked = document.querySelectorAll('[data-paywall="locked"]');
-
-  if (!valid) {
-    locked.forEach(el => (el.style.display = "none"));
-    showOverlay();
+  function getQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
   }
 
-  function grantAccess() {
-    localStorage.setItem(
-      key,
-      JSON.stringify({ expires: Date.now() + ttl })
+  function generateToken() {
+    return (
+      Date.now().toString(36) +
+      Math.random().toString(36).substring(2, 10)
     );
-    location.reload();
   }
 
-  function showOverlay() {
-    const overlay = document.createElement("div");
-    overlay.id = "paywall-overlay";
+  function saveAuth(token) {
+    const expiresAt =
+      Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
-    overlay.innerHTML = `
-      <div class="paywall-box">
-        <h2>Members Only</h2>
-        <p>Access the full Travel & Tourism RFP Hub.</p>
-
-        <input id="paywall-email" type="email" placeholder="Enter your email" />
-        <button id="send-link">Send login link</button>
-
-        <div class="divider">or</div>
-
-        <button onclick="window.location.href='${cfg.stripe.individualPlanUrl}'">
-          Join Individual
-        </button>
-
-        <button onclick="window.location.href='${cfg.stripe.agencyPlanUrl}'">
-          Join Agency
-        </button>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    document.getElementById("send-link").onclick = sendMagicLink;
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ token, expiresAt })
+    );
   }
 
-  function sendMagicLink() {
-    const email = document.getElementById("paywall-email").value;
-    if (!email) return alert("Enter an email");
+  function getAuth() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return null;
+    }
+  }
 
-    const token = btoa(email + "|" + Date.now());
+  function isAuthed() {
+    const data = getAuth();
+    return data && Date.now() < data.expiresAt;
+  }
+
+  function clearAuth() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  /* ---------- magic link handling ---------- */
+
+  const incomingToken = getQueryParam("token");
+
+  if (incomingToken) {
+    saveAuth(incomingToken);
+
+    // Clean URL (remove token)
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, "", cleanUrl);
+  }
+
+  /* ---------- expose helpers for paywall ---------- */
+
+  window.SigmundAuth = {
+    isAuthed,
+    logout: () => {
+      clearAuth();
+      window.location.reload();
+    },
+  };
+
+  /* ---------- send magic link ---------- */
+
+  window.sendMagicLink = function (email) {
+    if (!email || !email.includes("@")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    const token = generateToken();
     const magicLink =
       window.location.origin +
-      cfg.pagePath +
+      window.location.pathname +
       "?token=" +
       encodeURIComponent(token);
 
-    emailjs.send(
-      cfg.email.serviceId,
-      cfg.email.templateId,
-      { magic_link: magicLink },
-      cfg.email.publicKey
-    );
-
-    alert("Check your email for your login link.");
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("token")) {
-    grantAccess();
-  }
+    emailjs
+      .send(
+        window.APP_CONFIG.email.serviceId,
+        window.APP_CONFIG.email.templateId,
+        {
+          email: email,
+          magic_link: magicLink,
+        },
+        window.APP_CONFIG.email.publicKey
+      )
+      .then(() => {
+        alert(
+          "Check your email for your secure login link. It will be valid for 30 days."
+        );
+      })
+      .catch((err) => {
+        console.error("EmailJS error:", err);
+        alert(
+          "Something went wrong sending the login link. Please try again."
+        );
+      });
+  };
 })();
