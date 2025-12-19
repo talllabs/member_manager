@@ -7,10 +7,7 @@ window.PaywallStripe = {
   }
 };
 
-// unlock after Stripe return
-if (window.location.search.includes(
-  window.PaywallConfig.stripe.successParam
-)) {
+if (window.location.search.includes(window.PaywallConfig.stripe.successParam)) {
   localStorage.setItem(
     window.PaywallConfig.access.storageKey,
     "true"
